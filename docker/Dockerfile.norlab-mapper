@@ -1,0 +1,61 @@
+FROM ros:humble-ros-base
+
+ARG DEBIAN_FRONTEND=noninteractive
+
+# System deps: build tools + ROS2 packages needed by norlab stack
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git cmake build-essential ninja-build \
+    libeigen3-dev \
+    libboost-filesystem-dev libboost-thread-dev libboost-system-dev libboost-program-options-dev \
+    python3-colcon-common-extensions python3-rosdep \
+    ros-humble-pcl-ros \
+    ros-humble-tf2-ros \
+    ros-humble-tf2-geometry-msgs \
+    ros-humble-tf2-sensor-msgs \
+    ros-humble-sensor-msgs \
+    ros-humble-geometry-msgs \
+    ros-humble-nav-msgs \
+    ros-humble-visualization-msgs \
+    ros-humble-rosbag2 \
+    ros-humble-rosbag2-storage-mcap \
+    && rm -rf /var/lib/apt/lists/*
+
+# libnabo (k-d tree for ICP)
+RUN git clone --depth 1 https://github.com/norlab-ulaval/libnabo /tmp/libnabo && \
+    cmake -S /tmp/libnabo -B /tmp/libnabo/build \
+        -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local && \
+    cmake --build /tmp/libnabo/build --parallel && \
+    cmake --install /tmp/libnabo/build && \
+    rm -rf /tmp/libnabo
+
+# libpointmatcher (ICP registration library)
+RUN git clone --depth 1 https://github.com/norlab-ulaval/libpointmatcher /tmp/libpointmatcher && \
+    cmake -S /tmp/libpointmatcher -B /tmp/libpointmatcher/build \
+        -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local && \
+    cmake --build /tmp/libpointmatcher/build --parallel && \
+    cmake --install /tmp/libpointmatcher/build && \
+    rm -rf /tmp/libpointmatcher
+
+# norlab_icp_mapper core library
+RUN git clone --depth 1 https://github.com/norlab-ulaval/norlab_icp_mapper /tmp/norlab_icp_mapper && \
+    cmake -S /tmp/norlab_icp_mapper -B /tmp/norlab_icp_mapper/build \
+        -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local && \
+    cmake --build /tmp/norlab_icp_mapper/build --parallel && \
+    cmake --install /tmp/norlab_icp_mapper/build && \
+    rm -rf /tmp/norlab_icp_mapper
+
+# ROS2 workspace: bridge + mapper ROS node + config template
+RUN mkdir -p /ros2_ws/src && \
+    git clone --depth 1 https://github.com/norlab-ulaval/libpointmatcher_ros     /ros2_ws/src/libpointmatcher_ros && \
+    git clone --depth 1 https://github.com/norlab-ulaval/norlab_icp_mapper_ros   /ros2_ws/src/norlab_icp_mapper_ros && \
+    git clone --depth 1 https://github.com/norlab-ulaval/mapper_config_template  /ros2_ws/src/mapper_config_template
+
+RUN bash -c "source /opt/ros/humble/setup.bash && \
+    cd /ros2_ws && \
+    colcon build --symlink-install \
+        --cmake-args -DCMAKE_BUILD_TYPE=Release 2>&1"
+
+COPY docker/entrypoint-mapper.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+ENTRYPOINT ["/entrypoint.sh"]
