@@ -83,20 +83,6 @@ Notes:
   - first choice: GGA field (satellites used)
   - fallback: GSV field (satellites in view)
 
-## Output files
-
-Depending on the mode, the script writes ParaView-readable outputs such as:
-
-- `map_2_nanook/result/trajectory_sat.vtp`
-- `map_2_nanook/result/trajectory_sat.vtk`
-- `map_2_nanook/result/map_sat.vtp`
-
-And CSV intermediates:
-
-- `map_2_nanook/result/gnss_samples.csv`
-- `map_2_nanook/result/trajectory_points.csv`
-- `map_2_nanook/result/map_points_sampled.csv`
-
 ## Open in ParaView
 
 1. Open `trajectory_sat.vtp`, `trajectory_sat.vtk`, and/or `map_sat.vtp`.
